@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Physics Simulators</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: white;
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 36px;
+        }
+
+        .subtitle {
+            color: rgba(255,255,255,0.8);
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 16px;
+        }
+
+        .menu {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .simulator-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            border: 3px solid transparent;
+        }
+
+        .simulator-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            border-color: #667eea;
+        }
+
+        .simulator-card h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 24px;
+        }
+
+        .simulator-card p {
+            color: #666;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .simulator-card .emoji {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .simulator {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            display: none;
+        }
+
+        .simulator.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .simulator h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 28px;
+        }
+
+        .simulator-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .canvas-container {
+            background: #f5f5f5;
+            border-radius: 10px;
+            padding: 20px;
+        }
+
+        canvas {
+            width: 100%;
+            height: 400px;
+            display: block;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 400px;
+        }
+
+        .controls {
+            background: #f9f9f9;
+            border-radius: 10px;
+            padding: 20px;
+        }
+
+        .control-group {
+            margin-bottom: 20px;
+        }
+
+        .control-group label {
+            display: block;
+            color: #333;
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .control-group input[type="range"] {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: #667eea;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .control-group input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+        }
+
+        .control-group input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            border: none;
+        }
+
+        .value-display {
+            color: #667eea;
+            font-weight: bold;
+            font-size: 16px;
+            margin-top: 5px;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 15px;
+            transition: all 0.3s ease;
+        }
+
+        button:hover {
+            background: #764ba2;
+            transform: scale(1.02);
+        }
+
+        .explanation {
+            background: #fffacd;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+            font-size: 14px;
+            line-height: 1.8;
+            color: #333;
+            font-family: 'Courier New', monospace;
+        }
+
+        .explanation strong {
+            color: #667eea;
+        }
+
+        .back-button {
+            background: #ddd;
+            color: #333;
+            margin-bottom: 20px;
+            width: auto;
+            display: inline-block;
+            padding: 10px 20px;
+        }
+
+        .back-button:hover {
+            background: #ccc;
+        }
+
+        @media (max-width: 1024px) {
+            .simulator-content {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .results {
+            background: #e8f5e9;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            font-size: 14px;
+        }
+
+        .results strong {
+            color: #2e7d32;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Interactive Physics Simulators</h1>
+        <p class="subtitle">Click a simulator to explore physics concepts visually</p>
+
+        <!-- Menu -->
+        <div id="menu" class="menu">
+            <div class="simulator-card" onclick="startSimulator('projectile')">
+                <div class="emoji">🎯</div>
+                <h3>Projectile Motion</h3>
+                <p>Watch gravity and velocity create curved paths. Adjust angle and velocity to see the difference.</p>
+            </div>
+
+            <div class="simulator-card" onclick="startSimulator('waves')">
+                <div class="emoji">🌊</div>
+                <h3>Wave Interference</h3>
+                <p>See how waves combine, amplify, or cancel each other out based on phase difference.</p>
+            </div>
+
+            <div class="simulator-card" onclick="startSimulator('pendulum')">
+                <div class="emoji">📍</div>
+                <h3>Pendulum Motion</h3>
+                <p>Explore simple harmonic motion and energy conservation with a swinging pendulum.</p>
+            </div>
+
+            <div class="simulator-card" onclick="startSimulator('orbits')">
+                <div class="emoji">🌍</div>
+                <h3>Gravity & Orbits</h3>
+                <p>Watch planets orbit stars and learn how gravity provides the centripetal force.</p>
+            </div>
+        </div>
+
+        <!-- Projectile Motion Simulator -->
+        <div id="projectile" class="simulator">
+            <button class="back-button" onclick="backToMenu()">← Back to Menu</button>
+            <h2>🎯 Projectile Motion Simulator</h2>
+
+            <div class="simulator-content">
+                <div>
+                    <div class="canvas-container">
+                        <canvas id="projectileCanvas"></canvas>
+                    </div>
+                </div>
+
+                <div class="controls">
+                    <div class="control-group">
+                        <label for="projVelocity">Initial Velocity (m/s)</label>
+                        <input type="range" id="projVelocity" min="10" max="100" value="50" oninput="updateProjectile()">
+                        <div class="value-display" id="projVelocityDisplay">50 m/s</div>
+                    </div>
+
+                    <div class="control-group">
+                        <label for="projAngle">Launch Angle (degrees)</label>
+                        <input type="range" id="projAngle" min="0" max="90" value="45" oninput="updateProjectile()">
+                        <div class="value-display" id="projAngleDisplay">45°</div>
+                    </div>
+
+                    <div class="control-group">
+                        <label for="projGravity">Gravity (m/s²)</label>
+                        <input type="range" id="projGravity" min="1" max="30" value="9.8" step="0.1" oninput="updateProjectile()">
+                        <div class="value-display" id="projGravityDisplay">9.8 m/s²</div>
+                    </div>
+
+                    <button onclick="launchProjectile()">🎯 Launch</button>
+
+                    <div id="projResults" class="results" style="display:none;"></div>
+                </div>
+            </div>
+
+            <div class="explanation">
+                <strong>💡 Physics Concepts:</strong><br><br>
+                <strong>Horizontal Velocity (Vx):</strong> Stays CONSTANT throughout flight because no horizontal forces act on it (ignoring air resistance).<br><br>
+                <strong>Vertical Velocity (Vy):</strong> DECREASES over time due to gravity. At the peak, Vy = 0 (momentary stop), then becomes negative (falling).<br><br>
+                <strong>Optimal Angle:</strong> 45° gives MAXIMUM DISTANCE because it perfectly balances horizontal and vertical components.<br><br>
+                <strong>Equations:</strong> x = v₀·cos(θ)·t  |  y = v₀·sin(θ)·t - ½g·t²
+            </div>
+        </div>
+
+        <!-- Wave Interference Simulator -->
+        <div id="waves" class="simulator">
+            <button class="back-button" onclick="backToMenu()">← Back to Menu</button>
+            <h2>🌊 Wave Interference Simulator</h2>
+
+            <div class="simulator-content">
+                <div>
+                    <div class="canvas-container">
+                        <canvas id="wavesCanvas"></canvas>
+                    </div>
+                </div>
+
+                <div class="controls">
+                    <div class="control-group">
+                        <label for="waveAmp1">Wave 1 Amplitude</label>
+                        <input type="range" id="waveAmp1" min="0.5" max="2" value="1" step="0.1" oninput="updateWaves()">
+                        <div class="value-display" id="waveAmp1Display">1.0</div>
+                    </div>
+
+                    <div class="control-group">
+                        <label for="waveAmp2">Wave 2 Amplitude</label>
+                        <input type="range" id="waveAmp2" min="0.5" max="2" value="1" step="0.1" oninput="updateWaves()">
+                        <div class="value-display" id="waveAmp2Display">1.0</div>
+                    </div>
+
+                    <div class="control-group">
+                        <label for="wavePhase">Phase Difference (degrees)</label>
+                        <input type="range" id="wavePhase" min="0" max="360" value="0" oninput="updateWaves()">
+                        <div class="value-display" id="wavePhaseDisplay">0°</div>
+                    </div>
+
+                    <button onclick="analyzeWaves()">🌊 Analyze</button>
+
+                    <div id="wavesResults" class="results" style="display:none;"></div>
+                </div>
+            </div>
+
+            <div class="explanation">
+                <strong>💡 Physics Concepts:</strong><br><br>
+                <strong>Constructive Interference (0°):</strong> Peaks align with peaks, amplitudes ADD UP → LARGER wave<br><br>
+                <strong>Destructive Interference (180°):</strong> Peaks align with troughs, amplitudes CANCEL → SMALLER or zero wave<br><br>
+                <strong>Real-World Examples:</strong> Noise-cancelling headphones, speaker systems, light diffraction patterns
+            </div>
+        </div>
+
+        <!-- Pendulum Simulator -->
+        <div id="pendulum" class="simulator">
+            <button class="back-button" onclick="backToMenu()">← Back to Menu</button>
+            <h2>📍 Pendulum Simulator</h2>
+
+            <div class="simulator-content">
+                <div>
+                    <div class="canvas-container">
+                        <canvas id="pendulumCanvas"></canvas>
+                    </div>
+                </div>
+
+                <div class="controls">
+                    <div class="control-group">
+                        <label for="pendLength">Pendulum Length (m)</label>
+                        <input type="range" id="pendLength" min="0.5" max="3" value="1" step="0.1" oninput="updatePendulum()">
+                        <div class="value-display" id="pendLengthDisplay">1.0 m</div>
+                    </div>
+
+                    <div class="control-group">
+                        <label for="pendAmplitude">Initial Angle (degrees)</label>
+                        <input type="range" id="pendAmplitude" min="5" max="80" value="45" oninput="updatePendulum()">
+                        <div class="value-display" id="pendAmplitudeDisplay">45°</div>
+                    </div>
+
+                    <div class="control-group">
+                        <label for="pendMass">Mass (kg)</label>
+                        <input type="range" id="pendMass" min="0.5" max="5" value="1" step="0.5" oninput="updatePendulum()">
+                        <div class="value-display" id="pendMassDisplay">1.0 kg</div>
+                    </div>
+
+                    <button onclick="swingPendulum()">📍 Swing</button>
+
+                    <div id="pendResults" class="results" style="display:none;"></div>
+                </div>
+            </div>
+
+            <div class="explanation">
+                <strong>💡 Physics Concepts:</strong><br><br>
+                <strong>Period (T = 2π√(L/g)):</strong> Time for one complete swing. Depends ONLY on length, not mass!<br><br>
+                <strong>Simple Harmonic Motion:</strong> Repeating back-and-forth pattern. Displacement, velocity, and acceleration follow sinusoidal curves.<br><br>
+                <strong>Energy Conservation:</strong> Potential energy at the top ↔ Kinetic energy at the bottom. Total energy CONSTANT!
+            </div>
+        </div>
+
+        <!-- Orbits Simulator -->
+        <div id="orbits" class="simulator">
+            <button class="back-button" onclick="backToMenu()">← Back to Menu</button>
+            <h2>🌍 Gravity & Orbits Simulator</h2>
+
+            <div class="simulator-content">
+                <div>
+                    <div class="canvas-container">
+                        <canvas id="orbitsCanvas"></canvas>
+                    </div>
+                </div>
+
+                <div class="controls">
+                    <div class="control-group">
+                        <label for="orbitRadius">Orbital Radius</label>
+                        <input type="range" id="orbitRadius" min="1" max="5" value="2" step="0.5" oninput="updateOrbits()">
+                        <div class="value-display" id="orbitRadiusDisplay">2.0</div>
+                    </div>
+
+                    <div class="control-group">
+                        <label for="starMass">Star Mass</label>
+                        <input type="range" id="starMass" min="0.5" max="3" value="1" step="0.5" oninput="updateOrbits()">
+                        <div class="value-display" id="starMassDisplay">1.0</div>
+                    </div>
+
+                    <div class="control-group">
+                        <label for="orbitVelocity">Orbital Velocity</label>
+                        <input type="range" id="orbitVelocity" min="0.3" max="2" value="1" step="0.1" oninput="updateOrbits()">
+                        <div class="value-display" id="orbitVelocityDisplay">1.0</div>
+                    </div>
+
+                    <button onclick="orbit()">🌍 Start Orbit</button>
+
+                    <div id="orbitResults" class="results" style="display:none;"></div>
+                </div>
+            </div>
+
+            <div class="explanation">
+                <strong>💡 Physics Concepts:</strong><br><br>
+                <strong>Gravitational Force:</strong> F = GM·m/r² — Decreases with distance squared. Always points toward the star.<br><br>
+                <strong>Centripetal Force:</strong> The force needed to keep something moving in a circle. Gravity provides this!<br><br>
+                <strong>The Key Insight:</strong> Gravity = Centripetal force needed. Too fast = escape orbit. Too slow = falls into star. Just right = stable circle!
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let projectileAnim = null;
+        let pendulumAnim = null;
+        let orbitsAnim = null;
+        let waveAnim = null;
+
+        function backToMenu() {
+            document.querySelectorAll('.simulator').forEach(s => s.classList.remove('active'));
+            document.getElementById('menu').style.display = 'grid';
+            if (projectileAnim) cancelAnimationFrame(projectileAnim);
+            if (pendulumAnim) cancelAnimationFrame(pendulumAnim);
+            if (orbitsAnim) cancelAnimationFrame(orbitsAnim);
+            if (waveAnim) cancelAnimationFrame(waveAnim);
+        }
+
+        function startSimulator(name) {
+            document.getElementById('menu').style.display = 'none';
+            document.querySelectorAll('.simulator').forEach(s => s.classList.remove('active'));
+            document.getElementById(name).classList.add('active');
+        }
+
+        // PROJECTILE MOTION
+        function updateProjectile() {
+            document.getElementById('projVelocityDisplay').textContent = document.getElementById('projVelocity').value + ' m/s';
+            document.getElementById('projAngleDisplay').textContent = document.getElementById('projAngle').value + '°';
+            document.getElementById('projGravityDisplay').textContent = document.getElementById('projGravity').value + ' m/s²';
+        }
+
+        function launchProjectile() {
+            const canvas = document.getElementById('projectileCanvas');
+            const ctx = canvas.getContext('2d');
+            
+            const velocity = parseFloat(document.getElementById('projVelocity').value);
+            const angle = parseFloat(document.getElementById('projAngle').value) * Math.PI / 180;
+            const gravity = parseFloat(document.getElementById('projGravity').value);
+
+            // Calculate results
+            const maxHeight = (velocity * velocity * Math.sin(angle) * Math.sin(angle)) / (2 * gravity);
+            const distance = (velocity * velocity * Math.sin(2 * angle)) / gravity;
+            const timeOfFlight = (2 * velocity * Math.sin(angle)) / gravity;
+
+            // Draw trajectory
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+
+            ctx.fillStyle = '#f0f0f0';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            const scale = canvas.width / (distance + 50);
+            const startX = 30;
+            const startY = canvas.height - 50;
+
+            ctx.strokeStyle = '#667eea';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(startX, startY);
+
+            for (let t = 0; t <= timeOfFlight; t += 0.05) {
+                const x = velocity * Math.cos(angle) * t;
+                const y = velocity * Math.sin(angle) * t - 0.5 * gravity * t * t;
+                ctx.lineTo(startX + x * scale, startY - y * scale);
+            }
+            ctx.stroke();
+
+            // Draw launch point
+            ctx.fillStyle = '#4caf50';
+            ctx.beginPath();
+            ctx.arc(startX, startY, 8, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Draw ground
+            ctx.strokeStyle = '#8b4513';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(0, startY);
+            ctx.lineTo(canvas.width, startY);
+            ctx.stroke();
+
+            // Results
+            const resultsDiv = document.getElementById('projResults');
+            resultsDiv.innerHTML = `
+                <strong>Results:</strong><br>
+                Max Height: ${maxHeight.toFixed(1)} m<br>
+                Max Distance: ${distance.toFixed(1)} m<br>
+                Time of Flight: ${timeOfFlight.toFixed(2)} s
+            `;
+            resultsDiv.style.display = 'block';
+        }
+
+        // WAVE INTERFERENCE
+        function updateWaves() {
+            document.getElementById('waveAmp1Display').textContent = parseFloat(document.getElementById('waveAmp1').value).toFixed(1);
+            document.getElementById('waveAmp2Display').textContent = parseFloat(document.getElementById('waveAmp2').value).toFixed(1);
+            document.getElementById('wavePhaseDisplay').textContent = document.getElementById('wavePhase').value + '°';
+            drawWaves();
+        }
+
+        function drawWaves() {
+            const canvas = document.getElementById('wavesCanvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+
+            const amp1 = parseFloat(document.getElementById('waveAmp1').value);
+            const amp2 = parseFloat(document.getElementById('waveAmp2').value);
+            const phaseDiff = parseFloat(document.getElementById('wavePhase').value) * Math.PI / 180;
+
+            const centerY = canvas.height / 2;
+            const scale = canvas.width / (4 * Math.PI);
+            const heightScale = (canvas.height / 4);
+
+            // Draw waves
+            ctx.fillStyle = '#f0f0f0';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Wave 1
+            ctx.strokeStyle = '#2196f3';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            for (let x = 0; x < canvas.width; x++) {
+                const angle = x / scale;
+                const y = centerY - amp1 * Math.sin(angle) * heightScale;
+                if (x === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+
+            // Wave 2
+            ctx.strokeStyle = '#f44336';
+            ctx.beginPath();
+            for (let x = 0; x < canvas.width; x++) {
+                const angle = x / scale;
+                const y = centerY - amp2 * Math.sin(angle + phaseDiff) * heightScale;
+                if (x === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+
+            // Combined
+            ctx.strokeStyle = '#4caf50';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            for (let x = 0; x < canvas.width; x++) {
+                const angle = x / scale;
+                const y = centerY - (amp1 * Math.sin(angle) + amp2 * Math.sin(angle + phaseDiff)) * heightScale;
+                if (x === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+
+            // Center line
+            ctx.strokeStyle = '#999';
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath();
+            ctx.moveTo(0, centerY);
+            ctx.lineTo(canvas.width, centerY);
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+
+        function analyzeWaves() {
+            const phaseDiff = parseFloat(document.getElementById('wavePhase').value);
+            const amp1 = parseFloat(document.getElementById('waveAmp1').value);
+            const amp2 = parseFloat(document.getElementById('waveAmp2').value);
+
+            let type = 'Partial';
+            if (Math.abs(phaseDiff % 360) < 10 || Math.abs(phaseDiff % 360 - 360) < 10) {
+                type = 'CONSTRUCTIVE (Amplifies)';
+                var resultAmp = amp1 + amp2;
+            } else if (Math.abs((phaseDiff % 360) - 180) < 10) {
+                type = 'DESTRUCTIVE (Cancels)';
+                var resultAmp = Math.abs(amp1 - amp2);
+            } else {
+                var resultAmp = Math.sqrt(amp1*amp1 + amp2*amp2 + 2*amp1*amp2*Math.cos((phaseDiff * Math.PI / 180)));
+            }
+
+            const resultsDiv = document.getElementById('wavesResults');
+            resultsDiv.innerHTML = `
+                <strong>Interference Type:</strong> ${type}<br>
+                <strong>Result Amplitude:</strong> ${resultAmp.toFixed(2)}<br>
+                <strong>Phase Difference:</strong> ${phaseDiff.toFixed(0)}°
+            `;
+            resultsDiv.style.display = 'block';
+            drawWaves();
+        }
+
+        // PENDULUM
+        function updatePendulum() {
+            document.getElementById('pendLengthDisplay').textContent = parseFloat(document.getElementById('pendLength').value).toFixed(1) + ' m';
+            document.getElementById('pendAmplitudeDisplay').textContent = document.getElementById('pendAmplitude').value + '°';
+            document.getElementById('pendMassDisplay').textContent = parseFloat(document.getElementById('pendMass').value).toFixed(1) + ' kg';
+        }
+
+        function swingPendulum() {
+            const canvas = document.getElementById('pendulumCanvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+
+            const length = parseFloat(document.getElementById('pendLength').value);
+            const amplitude = parseFloat(document.getElementById('pendAmplitude').value) * Math.PI / 180;
+            const mass = parseFloat(document.getElementById('pendMass').value);
+            const gravity = 9.8;
+
+            const period = 2 * Math.PI * Math.sqrt(length / gravity);
+
+            const pivotX = canvas.width / 2;
+            const pivotY = 50;
+            const bobRadius = 10;
+            const pixelsPerMeter = 100;
+
+            const resultsDiv = document.getElementById('pendResults');
+            resultsDiv.innerHTML = `
+                <strong>Period:</strong> ${period.toFixed(2)} seconds<br>
+                <strong>Frequency:</strong> ${(1/period).toFixed(2)} Hz<br>
+                <strong>Note:</strong> Period depends ONLY on length, not mass!
+            `;
+            resultsDiv.style.display = 'block';
+
+            let time = 0;
+            const animatePendulum = () => {
+                ctx.fillStyle = '#f0f0f0';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                const theta = amplitude * Math.cos(2 * Math.PI * time / period);
+                const bobX = pivotX + length * pixelsPerMeter * Math.sin(theta);
+                const bobY = pivotY + length * pixelsPerMeter * Math.cos(theta);
+
+                // Draw pivot
+                ctx.fillStyle = '#333';
+                ctx.beginPath();
+                ctx.arc(pivotX, pivotY, 6, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Draw string
+                ctx.strokeStyle = '#333';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(pivotX, pivotY);
+                ctx.lineTo(bobX, bobY);
+                ctx.stroke();
+
+                // Draw bob
+                ctx.fillStyle = '#667eea';
+                ctx.beginPath();
+                ctx.arc(bobX, bobY, bobRadius, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Draw info
+                ctx.fillStyle = '#333';
+                ctx.font = '14px Arial';
+                ctx.fillText(`Angle: ${(theta * 180 / Math.PI).toFixed(1)}°`, 20, 30);
+
+                time += 0.016; // ~60fps
+                if (time < period * 2) {
+                    if (pendulumAnim) cancelAnimationFrame(pendulumAnim);
+                    pendulumAnim = requestAnimationFrame(animatePendulum);
+                }
+            };
+            animatePendulum();
+        }
+
+        // ORBITS
+        function updateOrbits() {
+            document.getElementById('orbitRadiusDisplay').textContent = parseFloat(document.getElementById('orbitRadius').value).toFixed(1);
+            document.getElementById('starMassDisplay').textContent = parseFloat(document.getElementById('starMass').value).toFixed(1);
+            document.getElementById('orbitVelocityDisplay').textContent = parseFloat(document.getElementById('orbitVelocity').value).toFixed(1);
+        }
+
+        function orbit() {
+            const canvas = document.getElementById('orbitsCanvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+
+            const radius = parseFloat(document.getElementById('orbitRadius').value);
+            const starMass = parseFloat(document.getElementById('starMass').value);
+            const velocity = parseFloat(document.getElementById('orbitVelocity').value);
+
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const scale = 50;
+            const orbitalRadius = radius * scale;
+            const idealVelocity = Math.sqrt(starMass / radius);
+
+            let angle = 0;
+            const resultsDiv = document.getElementById('orbitResults');
+            resultsDiv.innerHTML = `
+                <strong>Ideal Velocity:</strong> ${idealVelocity.toFixed(2)}<br>
+                <strong>Your Velocity:</strong> ${velocity.toFixed(2)}<br>
+                <strong>Status:</strong> ${Math.abs(velocity - idealVelocity) < 0.2 ? '✓ Circular Orbit' : velocity > idealVelocity ? '↗ Too Fast (Elliptical)' : '↘ Too Slow (Elliptical)'}
+            `;
+            resultsDiv.style.display = 'block';
+
+            const animateOrbit = () => {
+                ctx.fillStyle = '#f0f0f0';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // Draw orbit path
+                ctx.strokeStyle = '#ddd';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, orbitalRadius, 0, Math.PI * 2);
+                ctx.stroke();
+
+                // Draw star
+                ctx.fillStyle = '#ffd700';
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, 15, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Draw planet
+                const planetX = centerX + orbitalRadius * Math.cos(angle);
+                const planetY = centerY + orbitalRadius * Math.sin(angle);
+
+                ctx.fillStyle = '#667eea';
+                ctx.beginPath();
+                ctx.arc(planetX, planetY, 8, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Draw velocity vector
+                const vx = -orbitalRadius * velocity * Math.sin(angle) * 0.02;
+                const vy = orbitalRadius * velocity * Math.cos(angle) * 0.02;
+
+                ctx.strokeStyle = '#f44336';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(planetX, planetY);
+                ctx.lineTo(planetX + vx, planetY + vy);
+                ctx.stroke();
+
+                angle += velocity * 0.02;
+                if (orbitsAnim) cancelAnimationFrame(orbitsAnim);
+                orbitsAnim = requestAnimationFrame(animateOrbit);
+            };
+            animateOrbit();
+        }
+
+        // Initialize waves
+        drawWaves();
+    </script>
+</body>
+</html>
